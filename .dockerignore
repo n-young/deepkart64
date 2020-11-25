@@ -1,0 +1,5 @@
+Dockerfile
+Makefile
+.dockerignore
+.git
+.vscode
