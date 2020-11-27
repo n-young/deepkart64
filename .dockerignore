@@ -3,3 +3,5 @@ Makefile
 .dockerignore
 .git
 .vscode
+
+video.mp4

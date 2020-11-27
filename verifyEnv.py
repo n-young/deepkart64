@@ -6,17 +6,17 @@ from observe import observe
 env = gym.make('Mario-Kart-Luigi-Raceway-v0')
 env.reset()
 
-data = np.array([])
-
+data = []
 for i in range(88):
     (obs, rew, end, info) = env.step([0, 0, 0, 0, 0]) # NOOP until green light
-    np.append(data, env.observe())
+    data.append(obs)
 
 for i in range(100):
     (obs, rew, end, info) = env.step([0, 0, 1, 0, 0]) # Drive straight
-    np.append(data, env.observe())
+    data.append(obs)
 
-observe(data)
+# Turn on if you want a bunch of pictures, and then run `make copy` to get them locally
+observe(np.array(data))
 
 raw_input("Press <enter> to exit... ")
 
