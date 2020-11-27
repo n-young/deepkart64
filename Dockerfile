@@ -56,17 +56,22 @@ RUN wget "https://sourceforge.net/projects/virtualgl/files/${VIRTUALGL_VERSION}/
     apt install ./virtualgl_${VIRTUALGL_VERSION}_amd64.deb && \
     rm virtualgl_${VIRTUALGL_VERSION}_amd64.deb
 
+# Copy dependency specifications
+COPY ./requirements.txt /src/gym-mupen64plus/requirements.txt
+COPY ./environment.yml /src/gym-mupen64plus/environment.yml
+COPY ./setup.py /src/gym-mupen64plus/setup.py
+
+# Install requirements & this package
+WORKDIR /src/gym-mupen64plus
+RUN pip install -e .
+RUN pip install -r requirements.txt
+
 # Copy the gym environment (current directory)
 COPY . /src/gym-mupen64plus
 
 # Copy the Super Smash Bros. save file to the mupen64plus save directory
 # mupen64plus expects a specific filename, hence the awkward syntax and name
 COPY ["./gym_mupen64plus/envs/Smash/smash.sra", "/root/.local/share/mupen64plus/save/Super Smash Bros. (U) [!].sra"]
-
-# Install requirements & this package
-WORKDIR /src/gym-mupen64plus
-RUN pip install -e .
-RUN pip install -r requirements.txt
 
 # Declare ROMs as a volume for mounting a host path outside the container
 VOLUME /src/gym-mupen64plus/gym_mupen64plus/ROMs/
