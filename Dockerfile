@@ -66,6 +66,7 @@ COPY ["./gym_mupen64plus/envs/Smash/smash.sra", "/root/.local/share/mupen64plus/
 # Install requirements & this package
 WORKDIR /src/gym-mupen64plus
 RUN pip install -e .
+RUN pip install -r requirements.txt
 
 # Declare ROMs as a volume for mounting a host path outside the container
 VOLUME /src/gym-mupen64plus/gym_mupen64plus/ROMs/
