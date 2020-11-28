@@ -56,15 +56,10 @@ RUN wget "https://sourceforge.net/projects/virtualgl/files/${VIRTUALGL_VERSION}/
     apt install ./virtualgl_${VIRTUALGL_VERSION}_amd64.deb && \
     rm virtualgl_${VIRTUALGL_VERSION}_amd64.deb
 
-# Copy dependency specifications
-COPY ./requirements.txt /src/gym-mupen64plus/requirements.txt
-COPY ./environment.yml /src/gym-mupen64plus/environment.yml
-COPY ./setup.py /src/gym-mupen64plus/setup.py
-
 # Install requirements & this package
 WORKDIR /src/gym-mupen64plus
+COPY ./setup.py ./
 RUN pip install -e .
-RUN pip install -r requirements.txt
 
 # Copy the gym environment (current directory)
 COPY . /src/gym-mupen64plus
