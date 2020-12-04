@@ -7,6 +7,7 @@ import tensorflow as tf
 from observe import observe
 from discrete_envs import DiscreteActions
 from reinforce_with_baseline import DK64Model
+from compress import compress
 
 def discount(rewards, discount_factor=.99):
     """
@@ -44,6 +45,9 @@ def generate_trajectory(env, model, get_video=False):
     actions = []
     rewards = []
     state = env.reset()
+    state = compress(state)
+
+    print("shape of state: {}\n".format(tf.shape(state)))
     done = False
 
     # NOOP until green light
@@ -67,15 +71,17 @@ def generate_trajectory(env, model, get_video=False):
         states.append(state)
         actions.append(actual_action)
         state, rwd, done, _ = env.step(actual_action)
+        state = compress(state)
         rewards.append(rwd)
 
-        print("reward: {}\n".format(rwd))
+        print("shape of the state: {}\n".format(tf.shape(state)))
+        #print("reward: {}\n".format(rwd))
 
-    print("Finished 1000 iterations")
+    print("Finished 300 iterations")
 
     print("Calling observe")
 
-    observe(np.array(states))
+    observe(tf.convert_to_tensor(states).numpy())
 
     print("Finished observing")
 

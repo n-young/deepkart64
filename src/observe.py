@@ -5,6 +5,7 @@ import os
 
 def observe(data):
     # Make directory
+    print("making directory")
     os.mkdir("./pngs")
 
     # Printing pngs.

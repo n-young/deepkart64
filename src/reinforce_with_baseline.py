@@ -61,6 +61,7 @@ class DK64Model(tf.keras.Model):
         output = self.leaky2(output)
         output = self.encoder_conv_3(output)
         cnn_output = self.leaky3(output)
+        print("shape of the state: {}\n".format(tf.shape(cnn_output)))
         dense_input = tf.reshape(cnn_output, (1, -1))
 
         forward_pass = self.actor_dense3(self.actor_dense2(self.actor_dense1(dense_input)))
@@ -69,33 +70,9 @@ class DK64Model(tf.keras.Model):
         return probabilities
 
     def value_function(self, states):
-        """
-        Performs the forward pass on a batch of states to calculate the value function, to be used as the
-        critic in the loss function.
-        :param states: An [episode_length, state_size] dimensioned array representing the history of states
-        of an episode.
-        :return: A [episode_length] matrix representing the value of each state.
-        """
-
         return self.critic_dense2(self.critic_dense1(states))
-
+    
     def loss(self, states, actions, discounted_rewards):
-        """
-        Computes the loss for the agent. Refer to the lecture slides referenced in the handout to see how this is done.
-        Remember that the loss is similar to the loss as in part 1, with a few specific changes.
-        1) In your actor loss, instead of element-wise multiplying with discounted_rewards, you want to element-wise multiply with your advantage. 
-        See handout/slides for definition of advantage.
-        
-        2) In your actor loss, you must use tf.stop_gradient on the advantage to stop the loss calculated on the actor network 
-        from propagating back to the critic network.
-        
-        3) See handout/slides for how to calculate the loss for your critic network.
-        :param states: A batch of states of shape (episode_length, state_size)
-        :param actions: History of actions taken at each timestep of the episode (represented as an [episode_length] array)
-        :param discounted_rewards: Discounted rewards throughout a complete episode (represented as an [episode_length] array)
-        :return: loss, a TensorFlow scalar
-        """
-
         values = tf.squeeze(self.value_function(states))
         advantage = tf.math.subtract(discounted_rewards, values) 
         probabilities = self.call(states)
