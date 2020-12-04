@@ -1,6 +1,6 @@
 import os
 import sys
-sys.path.insert(0, 'gym_mupen64plus/envs/MarioKart64')
+sys.path.insert(0, '../gym_mupen64plus/envs/MarioKart64')
 import gym, gym_mupen64plus
 #from pylab import *
 import numpy as np
