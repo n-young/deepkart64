@@ -15,8 +15,7 @@ class DiscreteActions:
         ("SOFT_RIGHT",    [ 20,   0, 1, 0, 0]),
         ("RIGHT",         [ 40,   0, 1, 0, 0]),
         ("HARD_RIGHT",    [ 60,   0, 1, 0, 0]),
-        ("EXTREME_RIGHT", [ 80,   0, 1, 0, 0]),
-        ("ITEM",          [  0,   0, 0, 0, 1]), # TODO: Maybe get rid of this shit lol
+        ("EXTREME_RIGHT", [ 80,   0, 1, 0, 0])
     ]
 
     @staticmethod

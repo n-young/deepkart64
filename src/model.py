@@ -1,13 +1,12 @@
 import os
 import sys
-sys.path.insert(0, 'gym_mupen64plus/envs/MarioKart64')
+sys.path.insert(0, '../gym_mupen64plus/envs/MarioKart64')
 import gym, gym_mupen64plus
-#from pylab import *
 import numpy as np
 import tensorflow as tf
+from observe import observe
 from discrete_envs import DiscreteActions
-
-from reinforce_with_baseline import ReinforceWithBaseline
+from reinforce_with_baseline import DK64Model
 
 def discount(rewards, discount_factor=.99):
     """
@@ -34,7 +33,7 @@ def discount(rewards, discount_factor=.99):
     return discounted_rewards
 
 
-def generate_trajectory(env, model):
+def generate_trajectory(env, model, get_video=False):
     """
     Generates lists of states, actions, and rewards for one complete episode.
     :param env: The openai gym environment
@@ -45,23 +44,40 @@ def generate_trajectory(env, model):
     actions = []
     rewards = []
     state = env.reset()
-    print("state shape: {}\n".format(tf.shape(state)))
     done = False
 
-    while not done:
+    # NOOP until green light
+    for i in range(88):
+        (obs, rew, end, info) = env.step([0, 0, 0, 0, 0])
+
+    for i in range(300):
         # 1) use model to generate probability distribution over next actions
         # 2) sample from this distribution to pick the next action
+
+        # get cnn output; feed state into a CNN -> state vector
+
         probabilities = tf.squeeze(model.call(tf.expand_dims(tf.cast(state, tf.float32), axis=0)))
         probabilities = np.reshape(probabilities.numpy(), [model.num_actions])
         possible_actions = np.arange(model.num_actions)
         action = np.random.choice(possible_actions, 1, p=probabilities)[0]
 
+        discrete_actions = DiscreteActions()
+        actual_action = discrete_actions.ACTION_MAP[action][1]
+
         states.append(state)
-        actions.append(action)
-        state, rwd, done, _ = env.step(action)
+        actions.append(actual_action)
+        state, rwd, done, _ = env.step(actual_action)
         rewards.append(rwd)
 
-        print("state shape 2: {}\n".format(tf.shape(state)))
+        print("reward: {}\n".format(rwd))
+
+    print("Finished 1000 iterations")
+
+    print("Calling observe")
+
+    observe(np.array(states))
+
+    print("Finished observing")
 
     return states, actions, rewards
 
@@ -101,9 +117,10 @@ def main():
     state_size = env.observation_space.shape[0]
     discrete_actions = DiscreteActions()
     num_actions = discrete_actions.get_action_space().n
+    
 
     # Initialize model
-    model = ReinforceWithBaseline(state_size, num_actions)
+    model = DK64Model(state_size, num_actions)
     
     # 1) Train your model for 650 episodes, passing in the environment and the agent. 
     # 2) Append the total reward of the episode into a list keeping track of all of the rewards. 

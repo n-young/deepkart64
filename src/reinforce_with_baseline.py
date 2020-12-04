@@ -7,18 +7,18 @@ import tensorflow as tf
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 
-class ReinforceWithBaseline(tf.keras.Model):
+class DK64Model(tf.keras.Model):
     def __init__(self, state_size, num_actions):
         """
-        The ReinforceWithBaseline class that inherits from tf.keras.Model.
+        The DK64Model class that inherits from tf.keras.Model.
         The forward pass calculates the policy for the agent given a batch of states. During training,
-        ReinforceWithBaseLine estimates the value of each state to be used as a baseline to compare the policy's
+        Model estimates the value of each state to be used as a baseline to compare the policy's
         performance with.
         :param state_size: number of parameters that define the state. You don't necessarily have to use this, 
                            but it can be used as the input size for your first dense layer.
         :param num_actions: number of actions in an environment
         """
-        super(ReinforceWithBaseline, self).__init__()
+        super(DK64Model, self).__init__()
         self.num_actions = num_actions
 
         # Define actor network parameters, critic network parameters, and optimizer
@@ -26,12 +26,21 @@ class ReinforceWithBaseline(tf.keras.Model):
         self.optimizer = tf.keras.optimizers.Adam(self.learning_rate)
         self.hidden_size = 200
 
-        self.actor_dense1 = tf.keras.layers.Dense(self.hidden_size, "relu")
+        self.actor_dense1 = tf.keras.layers.Dense(60 * 80, "relu")
         self.actor_dense2 = tf.keras.layers.Dense(self.hidden_size, "relu")
         self.actor_dense3 = tf.keras.layers.Dense(self.num_actions)
 
         self.critic_dense1 = tf.keras.layers.Dense(self.hidden_size, "relu")
         self.critic_dense2 = tf.keras.layers.Dense(1)
+
+        # CNN hyperparameters
+        self.encoder_conv_1 = tf.keras.layers.Conv2D(filters=10,kernel_size=3,strides=(2,2), padding="same", kernel_initializer=tf.keras.initializers.RandomNormal(stddev=0.1))
+        self.encoder_conv_2 = tf.keras.layers.Conv2D(filters=10,kernel_size=3,strides=(2,2), padding="same", kernel_initializer=tf.keras.initializers.RandomNormal(stddev=0.1))
+        self.encoder_conv_3 = tf.keras.layers.Conv2D(filters=1,kernel_size=3,strides=(2,2), padding="same", kernel_initializer=tf.keras.initializers.RandomNormal(stddev=0.1))
+        self.leaky1 = tf.keras.layers.LeakyReLU(alpha=0.2)
+        self.leaky2 = tf.keras.layers.LeakyReLU(alpha=0.2)
+        self.leaky3 = tf.keras.layers.LeakyReLU(alpha=0.2)
+
 
 
     def call(self, states):
@@ -45,7 +54,16 @@ class ReinforceWithBaseline(tf.keras.Model):
         for each state in the episode
         """
 
-        forward_pass = self.actor_dense3(self.actor_dense2(self.actor_dense1(states)))
+        # pass through CNN
+        output = self.encoder_conv_1(states)
+        output = self.leaky1(output)
+        output = self.encoder_conv_2(output)
+        output = self.leaky2(output)
+        output = self.encoder_conv_3(output)
+        cnn_output = self.leaky3(output)
+        dense_input = tf.reshape(cnn_output, (1, -1))
+
+        forward_pass = self.actor_dense3(self.actor_dense2(self.actor_dense1(dense_input)))
         probabilities = tf.nn.softmax(forward_pass)
 
         return probabilities
