@@ -1,6 +1,7 @@
 import os
 import time
 import sys
+import dill
 
 sys.path.insert(0, "../gym_mupen64plus/envs/MarioKart64")
 import gym, gym_mupen64plus
@@ -134,6 +135,17 @@ def main():
     # Initialize model
     model = DK64Model(state_size, num_actions)
 
+    # Load weights if path specified
+    print(sys.argv)
+    if len(sys.argv) > 1:
+        print("Loading model...")
+        file = open(sys.argv[1], "rb")
+        model = dill.load(file)
+        file.close()
+        print("Confirming model loaded correctly...")
+        print(model.trainable_variables)
+        print("Model variables printed!)
+
     # 1) Train your model for 650 episodes, passing in the environment and the agent.
     # 2) Append the total reward of the episode into a list keeping track of all of the rewards.
     # 3) After training, print the average of the last 50 rewards you've collected.
@@ -147,6 +159,11 @@ def main():
 
     avg_last_rewards = np.sum(rewards[-50:]) / 50
     print("Average of last 50 rewards: {}\n".format(avg_last_rewards))
+
+    # Save model
+    file = open("./saved_model.pkl", "wb")
+    dill.dump(model, file)
+    file.close()
 
     # Visualize your rewards.
     # visualize_data(rewards) # commented out as this causes a segfault on my machine
