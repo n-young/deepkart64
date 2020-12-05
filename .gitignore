@@ -1,5 +1,5 @@
-*.pyc
-*.egg-info/
-.DS_Store
 Makefile
 video.mp4
+.DS_Store
+*.pyc
+*.egg-info/

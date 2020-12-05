@@ -1,17 +1,18 @@
 import os
 import time
 import sys
-sys.path.insert(0, '../gym_mupen64plus/envs/MarioKart64')
+
+sys.path.insert(0, "../gym_mupen64plus/envs/MarioKart64")
 import gym, gym_mupen64plus
 import numpy as np
 import tensorflow as tf
 from observe import observe
 from discrete_envs import DiscreteActions
-from reinforce_with_baseline import DK64Model
+from model import DK64Model
 from compress import compress
 
 
-def discount(rewards, discount_factor=.99):
+def discount(rewards, discount_factor=0.99):
     """
     Takes in a list of rewards for each timestep in an episode, and
     returns a list of the discounted rewards for each timestep.
@@ -22,7 +23,7 @@ def discount(rewards, discount_factor=.99):
     """
 
     num_rewards = len(rewards)
-    discounted_rewards = [None]*num_rewards
+    discounted_rewards = [None] * num_rewards
 
     for i in range(num_rewards):
         if i == 0:
@@ -30,7 +31,10 @@ def discount(rewards, discount_factor=.99):
             discounted_rewards[num_rewards - 1] = rewards[num_rewards - 1]
         else:
             # use the discounted reward of the next entry to calculate current
-            disc_reward = rewards[num_rewards - 1 - i] + discount_factor * discounted_rewards[num_rewards - i]
+            disc_reward = (
+                rewards[num_rewards - 1 - i]
+                + discount_factor * discounted_rewards[num_rewards - i]
+            )
             discounted_rewards[num_rewards - 1 - i] = disc_reward
 
     return discounted_rewards
@@ -48,24 +52,24 @@ def generate_trajectory(env, model, get_video=False):
     rewards = []
     state = env.reset()
     state = compress(state)
-
     done = False
 
     # NOOP until green light
     for i in range(88):
         (obs, rew, end, info) = env.step([0, 0, 0, 0, 0])
-    
-    start_time = time.time()
-    timeout = start_time + 90
 
-    while time.time() < timeout: 
-        if done: 
-            break 
+    # Set up the break condition - for now, runs for 90 seconds.
+    start_time = time.time()
+    while time.time() < start_time + 90:
+        if done:
+            break
         # 1) use model to generate probability distribution over next actions
         # 2) sample from this distribution to pick the next action
 
         # get cnn output; feed state into a CNN -> state vector
-        probabilities = tf.squeeze(model.call(tf.expand_dims(tf.cast(state, tf.float32), axis=0)))
+        probabilities = tf.squeeze(
+            model.call(tf.expand_dims(tf.cast(state, tf.float32), axis=0))
+        )
         probabilities = np.reshape(probabilities.numpy(), [model.num_actions])
         possible_actions = np.arange(model.num_actions)
         action = np.random.choice(possible_actions, 1, p=probabilities)[0]
@@ -79,13 +83,8 @@ def generate_trajectory(env, model, get_video=False):
         state = compress(state)
         rewards.append(rwd)
 
-    #print("Finished 300 iterations")
-
-    #print("Calling observe")
-
-    #observe(tf.convert_to_tensor(states).numpy())
-
-    #print("returning from generate_trajectory")
+    if get_video:
+        observe(tf.convert_to_tensor(states).numpy())
 
     return states, actions, rewards
 
@@ -111,7 +110,9 @@ def train(env, model):
     with tf.GradientTape() as tape:
         states, actions, rewards = generate_trajectory(env, model)
         discounted_rewards = discount(rewards)
-        loss = model.loss(tf.convert_to_tensor(states).numpy(), actions, discounted_rewards)
+        loss = model.loss(
+            tf.convert_to_tensor(states).numpy(), actions, discounted_rewards
+        )
         total_reward += np.sum(rewards)
 
     gradients = tape.gradient(loss, model.trainable_variables)
@@ -119,19 +120,22 @@ def train(env, model):
 
     return total_reward
 
+
 def main():
+    """
+    Main function.
+    """
 
     env = gym.make("Mario-Kart-Luigi-Raceway-v0")
     state_size = env.observation_space.shape[0]
     discrete_actions = DiscreteActions()
     num_actions = discrete_actions.get_action_space().n
-    
 
     # Initialize model
     model = DK64Model(state_size, num_actions)
 
-    # 1) Train your model for 650 episodes, passing in the environment and the agent. 
-    # 2) Append the total reward of the episode into a list keeping track of all of the rewards. 
+    # 1) Train your model for 650 episodes, passing in the environment and the agent.
+    # 2) Append the total reward of the episode into a list keeping track of all of the rewards.
     # 3) After training, print the average of the last 50 rewards you've collected.
 
     rewards = []
@@ -148,26 +152,5 @@ def main():
     # visualize_data(rewards) # commented out as this causes a segfault on my machine
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
-
-
-# ABSTRACT METHODS
-# _step(action)
-# _observe()
-# _render()
-# _navigate_menu()
-# _get_reward()
-# _evaluate_end_state()
-# _reset()
-
-# MARIO KART METHODS
-# _navigate_post_race_menu()
-# _set_character(character)
-# _get_lap()
-
-# ENVIRONMENT METHODS
-# gym.make('map')
-# env.step([arr])
-# env.reset()
-# env.close()

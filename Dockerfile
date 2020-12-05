@@ -1,7 +1,6 @@
 ################################################################
 FROM ubuntu:xenial-20170915 AS base
 
-
 # Setup environment variables in a single layer
 ENV \
     # Prevent dpkg from prompting for user input during package setup

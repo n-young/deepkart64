@@ -1,7 +1,7 @@
 Dockerfile
 Makefile
+video.mp4
+.DS_Store
 .dockerignore
 .git
 .vscode
-
-video.mp4
