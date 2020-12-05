@@ -12,6 +12,8 @@ from discrete_envs import DiscreteActions
 from model import DK64Model
 from compress import compress
 
+# TODO: Make a lot of tweakable global variables up here
+
 
 def discount(rewards, discount_factor=0.99):
     """
@@ -142,9 +144,9 @@ def main():
     # Load weights if path specified
     print(sys.argv)
     if "-l" in sys.argv or "-ls" in sys.argv:
-        if len(sys.argv) != 2 and "-l" in sys.argv:
+        if len(sys.argv) != 3 and "-l" in sys.argv:
             print("CORRECT USAGE: -l <load_from>")
-        elif len(sys.argv) != 3 and "-ls" in sys.argv:
+        elif len(sys.argv) != 4 and "-ls" in sys.argv:
             print("CORRECT USAGE: -ls <load_from> <save_to")
         else:
             print("Loading model...")
@@ -165,6 +167,15 @@ def main():
         reward = train(env, model)
         print("Train episode {}! Reward: {}\n".format(i, reward))
         rewards.append(reward)
+        if i % 5 == 0 and "-S" in sys.argv:
+            if len(sys.argv) != 3:
+                print(
+                    "CORRECT USAGE: -S <archive_folder> e.g. -S ./save_to (don't have a trailing /)."
+                )
+            else:
+                file = open(sys.argv[3] + "/model-" + i // 5 + ".pkl", "wb")
+                dill.dump(model, file)
+                file.close()
 
     avg_last_rewards = np.sum(rewards[-50:]) / 50
     print("Average of last 50 rewards: {}\n".format(avg_last_rewards))
@@ -178,7 +189,7 @@ def main():
             dill.dump(model, file)
             file.close()
     elif "-ls" in sys.argv:
-        if len(sys.argv) != 3:
+        if len(sys.argv) != 4:
             print("CORRECT USAGE: -ls <load_from> <save_to")
         else:
             file = open(sys.argv[3], "wb")
@@ -187,7 +198,7 @@ def main():
 
     # Observe video
     if "-o" in sys.argv:
-        if len(sys.argv) != 2:
+        if len(sys.argv) != 3:
             print("CORRECT USAGE: -o <output_to>")
         else:
             train(env, model, get_video=True)
