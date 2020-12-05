@@ -9,6 +9,7 @@ from discrete_envs import DiscreteActions
 from reinforce_with_baseline import DK64Model
 from compress import compress
 
+
 def discount(rewards, discount_factor=.99):
     """
     Takes in a list of rewards for each timestep in an episode, and
@@ -30,7 +31,7 @@ def discount(rewards, discount_factor=.99):
             # use the discounted reward of the next entry to calculate current
             disc_reward = rewards[num_rewards - 1 - i] + discount_factor * discounted_rewards[num_rewards - i]
             discounted_rewards[num_rewards - 1 - i] = disc_reward
-    
+
     return discounted_rewards
 
 
@@ -53,7 +54,7 @@ def generate_trajectory(env, model, get_video=False):
     for i in range(88):
         (obs, rew, end, info) = env.step([0, 0, 0, 0, 0])
 
-    for i in range(200):
+    while not done:
         # 1) use model to generate probability distribution over next actions
         # 2) sample from this distribution to pick the next action
 
@@ -106,8 +107,7 @@ def train(env, model):
         discounted_rewards = discount(rewards)
         loss = model.loss(tf.convert_to_tensor(states).numpy(), actions, discounted_rewards)
         total_reward += np.sum(rewards)
-        
-    
+
     gradients = tape.gradient(loss, model.trainable_variables)
     model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
 
@@ -123,19 +123,19 @@ def main():
 
     # Initialize model
     model = DK64Model(state_size, num_actions)
-    
+
     # 1) Train your model for 650 episodes, passing in the environment and the agent. 
     # 2) Append the total reward of the episode into a list keeping track of all of the rewards. 
     # 3) After training, print the average of the last 50 rewards you've collected.
 
     rewards = []
-    for i in range(25):
+    for i in range(1):
         print("Train episode {}!\n".format(i))
         reward = train(env, model)
         rewards.append(reward)
 
-    avg_last_rewards = np.sum(rewards[-5:]) / 5
-    print("Average of last 5 rewards: {}\n".format(avg_last_rewards))
+    # avg_last_rewards = np.sum(rewards[-5:]) / 5
+    # print("Average of last 5 rewards: {}\n".format(avg_last_rewards))
 
     # Visualize your rewards.
     # visualize_data(rewards) # commented out as this causes a segfault on my machine

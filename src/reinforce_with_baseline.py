@@ -34,9 +34,12 @@ class DK64Model(tf.keras.Model):
         self.critic_dense2 = tf.keras.layers.Dense(1)
 
         # CNN hyperparameters
-        self.encoder_conv_1 = tf.keras.layers.Conv2D(filters=10,kernel_size=3,strides=(2,2), padding="same", kernel_initializer=tf.keras.initializers.RandomNormal(stddev=0.1))
-        self.encoder_conv_2 = tf.keras.layers.Conv2D(filters=10,kernel_size=3,strides=(2,2), padding="same", kernel_initializer=tf.keras.initializers.RandomNormal(stddev=0.1))
-        self.encoder_conv_3 = tf.keras.layers.Conv2D(filters=1,kernel_size=3,strides=(2,2), padding="same", kernel_initializer=tf.keras.initializers.RandomNormal(stddev=0.1))
+        self.encoder_conv_1 = tf.keras.layers.Conv2D(filters=10, kernel_size=3, strides=(2, 2), padding="same",
+                                                     kernel_initializer=tf.keras.initializers.RandomNormal(stddev=0.1))
+        self.encoder_conv_2 = tf.keras.layers.Conv2D(filters=10, kernel_size=3, strides=(2, 2), padding="same",
+                                                     kernel_initializer=tf.keras.initializers.RandomNormal(stddev=0.1))
+        self.encoder_conv_3 = tf.keras.layers.Conv2D(filters=1, kernel_size=3, strides=(2, 2), padding="same",
+                                                     kernel_initializer=tf.keras.initializers.RandomNormal(stddev=0.1))
         self.leaky1 = tf.keras.layers.LeakyReLU(alpha=0.2)
         self.leaky2 = tf.keras.layers.LeakyReLU(alpha=0.2)
         self.leaky3 = tf.keras.layers.LeakyReLU(alpha=0.2)
@@ -67,7 +70,6 @@ class DK64Model(tf.keras.Model):
         return probabilities
 
     def value_function(self, states):
-
         # pass through CNN to obtain state vector from image
         output = self.encoder_conv_1(states)
         output = self.leaky1(output)
@@ -78,7 +80,7 @@ class DK64Model(tf.keras.Model):
         dense_input = tf.reshape(cnn_output, (tf.shape(states)[0], -1))
         
         return self.critic_dense2(self.critic_dense1(dense_input))
-    
+
     def loss(self, states, actions, discounted_rewards):
         values = tf.squeeze(self.value_function(states))
         advantage = tf.math.subtract(discounted_rewards, values) 
