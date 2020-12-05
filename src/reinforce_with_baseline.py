@@ -26,14 +26,14 @@ class DK64Model(tf.keras.Model):
         self.optimizer = tf.keras.optimizers.Adam(self.learning_rate)
         self.hidden_size = 200
 
-        self.actor_dense1 = tf.keras.layers.Dense(60 * 80, "relu")
+        self.actor_dense1 = tf.keras.layers.Dense(self.hidden_size, "relu")
         self.actor_dense2 = tf.keras.layers.Dense(self.hidden_size, "relu")
         self.actor_dense3 = tf.keras.layers.Dense(self.num_actions)
 
         self.critic_dense1 = tf.keras.layers.Dense(self.hidden_size, "relu")
         self.critic_dense2 = tf.keras.layers.Dense(1)
 
-        # CNN hyperparameters
+        # actor CNN hyperparameters
         self.encoder_conv_1 = tf.keras.layers.Conv2D(filters=10,kernel_size=3,strides=(2,2), padding="same", kernel_initializer=tf.keras.initializers.RandomNormal(stddev=0.1))
         self.encoder_conv_2 = tf.keras.layers.Conv2D(filters=10,kernel_size=3,strides=(2,2), padding="same", kernel_initializer=tf.keras.initializers.RandomNormal(stddev=0.1))
         self.encoder_conv_3 = tf.keras.layers.Conv2D(filters=1,kernel_size=3,strides=(2,2), padding="same", kernel_initializer=tf.keras.initializers.RandomNormal(stddev=0.1))
@@ -41,7 +41,13 @@ class DK64Model(tf.keras.Model):
         self.leaky2 = tf.keras.layers.LeakyReLU(alpha=0.2)
         self.leaky3 = tf.keras.layers.LeakyReLU(alpha=0.2)
 
-
+        # critic CNN hyperparameters
+        self.c_encoder_conv_1 = tf.keras.layers.Conv2D(filters=10,kernel_size=3,strides=(2,2), padding="same", kernel_initializer=tf.keras.initializers.RandomNormal(stddev=0.1))
+        self.c_encoder_conv_2 = tf.keras.layers.Conv2D(filters=10,kernel_size=3,strides=(2,2), padding="same", kernel_initializer=tf.keras.initializers.RandomNormal(stddev=0.1))
+        self.c_encoder_conv_3 = tf.keras.layers.Conv2D(filters=1,kernel_size=3,strides=(2,2), padding="same", kernel_initializer=tf.keras.initializers.RandomNormal(stddev=0.1))
+        self.c_leaky1 = tf.keras.layers.LeakyReLU(alpha=0.2)
+        self.c_leaky2 = tf.keras.layers.LeakyReLU(alpha=0.2)
+        self.c_leaky3 = tf.keras.layers.LeakyReLU(alpha=0.2)
 
     def call(self, states):
         """
@@ -54,15 +60,14 @@ class DK64Model(tf.keras.Model):
         for each state in the episode
         """
 
-        # pass through CNN
+        # pass through actor CNN
         output = self.encoder_conv_1(states)
         output = self.leaky1(output)
         output = self.encoder_conv_2(output)
         output = self.leaky2(output)
         output = self.encoder_conv_3(output)
         cnn_output = self.leaky3(output)
-        print("shape of the state: {}\n".format(tf.shape(cnn_output)))
-        dense_input = tf.reshape(cnn_output, (1, -1))
+        dense_input = tf.reshape(cnn_output, (tf.shape(states)[0], -1))
 
         forward_pass = self.actor_dense3(self.actor_dense2(self.actor_dense1(dense_input)))
         probabilities = tf.nn.softmax(forward_pass)
@@ -70,7 +75,26 @@ class DK64Model(tf.keras.Model):
         return probabilities
 
     def value_function(self, states):
-        return self.critic_dense2(self.critic_dense1(states))
+        #print("orig states shape before value func: {}\n".format(tf.shape(states)))
+
+        # pass through critic CNN
+        #output = self.c_encoder_conv_1(states)
+        #output = self.c_leaky1(output)
+        #output = self.c_encoder_conv_2(output)
+        #output = self.c_leaky2(output)
+        #output = self.c_encoder_conv_3(output)
+        #cnn_output = self.c_leaky3(output)
+        #dense_input = tf.reshape(cnn_output, (1, -1))
+
+        output = self.encoder_conv_1(states)
+        output = self.leaky1(output)
+        output = self.encoder_conv_2(output)
+        output = self.leaky2(output)
+        output = self.encoder_conv_3(output)
+        cnn_output = self.leaky3(output)
+        dense_input = tf.reshape(cnn_output, (tf.shape(states)[0], -1))
+        
+        return self.critic_dense2(self.critic_dense1(dense_input))
     
     def loss(self, states, actions, discounted_rewards):
         values = tf.squeeze(self.value_function(states))
@@ -78,7 +102,6 @@ class DK64Model(tf.keras.Model):
         probabilities = self.call(states)
         probabilities_per_action = tf.gather_nd(probabilities, 
         tf.stack([tf.range(tf.shape(actions)[0], dtype=tf.int32), actions], axis=1))
-
         actor_loss = -1 * tf.reduce_sum(tf.math.log(probabilities_per_action) * tf.stop_gradient(advantage))
         critic_loss = tf.reduce_sum((discounted_rewards - values) ** 2)
 

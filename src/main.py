@@ -47,19 +47,17 @@ def generate_trajectory(env, model, get_video=False):
     state = env.reset()
     state = compress(state)
 
-    print("shape of state: {}\n".format(tf.shape(state)))
     done = False
 
     # NOOP until green light
     for i in range(88):
         (obs, rew, end, info) = env.step([0, 0, 0, 0, 0])
 
-    for i in range(300):
+    for i in range(200):
         # 1) use model to generate probability distribution over next actions
         # 2) sample from this distribution to pick the next action
 
         # get cnn output; feed state into a CNN -> state vector
-
         probabilities = tf.squeeze(model.call(tf.expand_dims(tf.cast(state, tf.float32), axis=0)))
         probabilities = np.reshape(probabilities.numpy(), [model.num_actions])
         possible_actions = np.arange(model.num_actions)
@@ -69,21 +67,18 @@ def generate_trajectory(env, model, get_video=False):
         actual_action = discrete_actions.ACTION_MAP[action][1]
 
         states.append(state)
-        actions.append(actual_action)
+        actions.append(action)
         state, rwd, done, _ = env.step(actual_action)
         state = compress(state)
         rewards.append(rwd)
 
-        print("shape of the state: {}\n".format(tf.shape(state)))
-        #print("reward: {}\n".format(rwd))
+    #print("Finished 300 iterations")
 
-    print("Finished 300 iterations")
+    #print("Calling observe")
 
-    print("Calling observe")
+    #observe(tf.convert_to_tensor(states).numpy())
 
-    observe(tf.convert_to_tensor(states).numpy())
-
-    print("Finished observing")
+    #print("returning from generate_trajectory")
 
     return states, actions, rewards
 
@@ -109,8 +104,9 @@ def train(env, model):
     with tf.GradientTape() as tape:
         states, actions, rewards = generate_trajectory(env, model)
         discounted_rewards = discount(rewards)
-        loss = model.loss(np.array(states), actions, discounted_rewards)
+        loss = model.loss(tf.convert_to_tensor(states).numpy(), actions, discounted_rewards)
         total_reward += np.sum(rewards)
+        
     
     gradients = tape.gradient(loss, model.trainable_variables)
     model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
@@ -133,14 +129,13 @@ def main():
     # 3) After training, print the average of the last 50 rewards you've collected.
 
     rewards = []
-    for i in range(100):
-        if (i % 25) == 0:
-            print("Train episode {}!\n".format(i))
+    for i in range(25):
+        print("Train episode {}!\n".format(i))
         reward = train(env, model)
         rewards.append(reward)
 
-    avg_last_rewards = np.sum(rewards[-10:]) / 10
-    print("Average of last 10 rewards: {}\n".format(avg_last_rewards))
+    avg_last_rewards = np.sum(rewards[-5:]) / 5
+    print("Average of last 5 rewards: {}\n".format(avg_last_rewards))
 
     # Visualize your rewards.
     # visualize_data(rewards) # commented out as this causes a segfault on my machine
