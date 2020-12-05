@@ -56,8 +56,8 @@ def generate_trajectory(env, model, get_video=False):
     done = False
 
     # NOOP until green light
-    for i in range(88):
-        (obs, rew, end, info) = env.step([0, 0, 0, 0, 0])
+    for _ in range(88):
+        env.step([0, 0, 0, 0, 0])
 
     # Set up the break condition - for now, runs for 90 seconds.
     start_time = time.time()
@@ -106,6 +106,10 @@ def train(env, model, get_video=False):
     # 2) Compute discounted rewards.
     # 3) Compute the loss from the model and run backpropagation on the model.
 
+    if get_video:
+        generate_trajectory(env, model, get_video)
+        return None
+
     total_reward = 0
 
     with tf.GradientTape() as tape:
@@ -135,16 +139,21 @@ def main():
     # Initialize model
     model = DK64Model(state_size, num_actions)
 
-    # Load weights if path specified TODO: Error checking
+    # Load weights if path specified
     print(sys.argv)
     if "-l" in sys.argv or "-ls" in sys.argv:
-        print("Loading model...")
-        file = open(sys.argv[2], "rb")
-        model = dill.load(file)
-        file.close()
-        print("Confirming model loaded correctly...")
-        print(model.trainable_variables)
-        print("Model variables printed!")
+        if len(sys.argv) != 2 and "-l" in sys.argv:
+            print("CORRECT USAGE: -l <load_from>")
+        elif len(sys.argv) != 3 and "-ls" in sys.argv:
+            print("CORRECT USAGE: -ls <load_from> <save_to")
+        else:
+            print("Loading model...")
+            file = open(sys.argv[2], "rb")
+            model = dill.load(file)
+            file.close()
+            print("Confirming model loaded correctly...")
+            print(model.trainable_variables)
+            print("Model variables printed!")
 
     # 1) Train your model for 650 episodes, passing in the environment and the agent.
     # 2) Append the total reward of the episode into a list keeping track of all of the rewards.
@@ -160,19 +169,28 @@ def main():
     avg_last_rewards = np.sum(rewards[-50:]) / 50
     print("Average of last 50 rewards: {}\n".format(avg_last_rewards))
 
-    # Save model TODO: Error checking
+    # Save model
     if "-s" in sys.argv:
-        file = open(sys.argv[2], "wb")
-        dill.dump(model, file)
-        file.close()
+        if len(sys.argv) != 3:
+            print("CORRECT USAGE: -s <save_to>")
+        else:
+            file = open(sys.argv[2], "wb")
+            dill.dump(model, file)
+            file.close()
     elif "-ls" in sys.argv:
-        file = open(sys.argv[3], "wb")
-        dill.dump(model, file)
-        file.close()
+        if len(sys.argv) != 3:
+            print("CORRECT USAGE: -ls <load_from> <save_to")
+        else:
+            file = open(sys.argv[3], "wb")
+            dill.dump(model, file)
+            file.close()
 
     # Observe video
     if "-o" in sys.argv:
-        train(env, model, get_video=True)
+        if len(sys.argv) != 2:
+            print("CORRECT USAGE: -o <output_to>")
+        else:
+            train(env, model, get_video=True)
 
     # Visualize your rewards.
     # visualize_data(rewards) # commented out as this causes a segfault on my machine
