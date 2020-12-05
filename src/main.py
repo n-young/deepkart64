@@ -173,7 +173,7 @@ def main():
                     "CORRECT USAGE: -S <archive_folder> e.g. -S ./save_to (don't have a trailing /)."
                 )
             else:
-                file = open(sys.argv[3] + "/model-" + i // 5 + ".pkl", "wb")
+                file = open(sys.argv[3] + "/model-" + i // 10 + ".pkl", "wb")
                 dill.dump(model, file)
                 file.close()
 
