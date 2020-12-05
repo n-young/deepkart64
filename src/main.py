@@ -1,4 +1,5 @@
 import os
+import time
 import sys
 sys.path.insert(0, '../gym_mupen64plus/envs/MarioKart64')
 import gym, gym_mupen64plus
@@ -53,8 +54,13 @@ def generate_trajectory(env, model, get_video=False):
     # NOOP until green light
     for i in range(88):
         (obs, rew, end, info) = env.step([0, 0, 0, 0, 0])
+    
+    start_time = time.time()
+    timeout = start_time + 90
 
-    while not done:
+    while time.time() < timeout: 
+        if done: 
+            break 
         # 1) use model to generate probability distribution over next actions
         # 2) sample from this distribution to pick the next action
 
@@ -129,13 +135,14 @@ def main():
     # 3) After training, print the average of the last 50 rewards you've collected.
 
     rewards = []
-    for i in range(1):
-        print("Train episode {}!\n".format(i))
+
+    for i in range(300):
         reward = train(env, model)
+        print("Train episode {}! Reward: {}\n".format(i, reward))
         rewards.append(reward)
 
-    # avg_last_rewards = np.sum(rewards[-5:]) / 5
-    # print("Average of last 5 rewards: {}\n".format(avg_last_rewards))
+    avg_last_rewards = np.sum(rewards[-50:]) / 50
+    print("Average of last 50 rewards: {}\n".format(avg_last_rewards))
 
     # Visualize your rewards.
     # visualize_data(rewards) # commented out as this causes a segfault on my machine
