@@ -18,7 +18,7 @@ for i in range(100):
     data.append(obs)
 
 # Turn on if you want a bunch of pictures, and then run `make copy` to get them locally
-observe(np.array(data))
+observe(np.array(data), "./video.mp4")
 
 raw_input("Press <enter> to exit... ")
 

@@ -85,12 +85,12 @@ def generate_trajectory(env, model, get_video=False):
         rewards.append(rwd)
 
     if get_video:
-        observe(tf.convert_to_tensor(states).numpy())
+        observe(tf.convert_to_tensor(states).numpy(), sys.argv[2])
 
     return states, actions, rewards
 
 
-def train(env, model):
+def train(env, model, get_video=False):
     """
     This function should train your model for one episode.
     Each call to this function should generate a complete trajectory for one
@@ -109,7 +109,7 @@ def train(env, model):
     total_reward = 0
 
     with tf.GradientTape() as tape:
-        states, actions, rewards = generate_trajectory(env, model)
+        states, actions, rewards = generate_trajectory(env, model, get_video)
         discounted_rewards = discount(rewards)
         loss = model.loss(
             tf.convert_to_tensor(states).numpy(), actions, discounted_rewards
@@ -135,16 +135,16 @@ def main():
     # Initialize model
     model = DK64Model(state_size, num_actions)
 
-    # Load weights if path specified
+    # Load weights if path specified TODO: Error checking
     print(sys.argv)
-    if len(sys.argv) > 1:
+    if "-l" in sys.argv or "-ls" in sys.argv:
         print("Loading model...")
-        file = open(sys.argv[1], "rb")
+        file = open(sys.argv[2], "rb")
         model = dill.load(file)
         file.close()
         print("Confirming model loaded correctly...")
         print(model.trainable_variables)
-        print("Model variables printed!)
+        print("Model variables printed!")
 
     # 1) Train your model for 650 episodes, passing in the environment and the agent.
     # 2) Append the total reward of the episode into a list keeping track of all of the rewards.
@@ -160,10 +160,19 @@ def main():
     avg_last_rewards = np.sum(rewards[-50:]) / 50
     print("Average of last 50 rewards: {}\n".format(avg_last_rewards))
 
-    # Save model
-    file = open("./saved_model.pkl", "wb")
-    dill.dump(model, file)
-    file.close()
+    # Save model TODO: Error checking
+    if "-s" in sys.argv:
+        file = open(sys.argv[2], "wb")
+        dill.dump(model, file)
+        file.close()
+    elif "-ls" in sys.argv:
+        file = open(sys.argv[3], "wb")
+        dill.dump(model, file)
+        file.close()
+
+    # Observe video
+    if "-o" in sys.argv:
+        train(env, model, get_video=True)
 
     # Visualize your rewards.
     # visualize_data(rewards) # commented out as this causes a segfault on my machine

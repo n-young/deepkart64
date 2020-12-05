@@ -4,7 +4,7 @@ import ffmpeg
 import os
 
 
-def observe(data):
+def observe(data, filename):
     """
     Ingests a 3d numpy array, data, that contains the pixel data of a run.
     Exports it to ./src/video.mp4.
@@ -22,7 +22,7 @@ def observe(data):
 
     # Converting pngs to mp4.
     print("Writing video...")
-    ffmpeg.input("./pngs/%d.png", framerate=20).output("./video.mp4").run()
+    ffmpeg.input("./pngs/%d.png", framerate=20).output(filename).run()
     print("Video written to ./src/video.mp4!")
 
     # Removing excess pngs.
