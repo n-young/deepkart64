@@ -81,7 +81,7 @@ def generate_trajectory(env, model, get_video=False):
 
     # Output video if specified.
     if get_video:
-        observe(tf.convert_to_tensor(states).numpy(), sys.argv[2])
+        observe(tf.convert_to_tensor(states).numpy(), sys.argv[3])
 
     # Return.
     return states, actions, rewards
@@ -132,11 +132,13 @@ def main():
 
     # Load weights if -l or -ls flag specified.
     print(sys.argv)
-    if "-l" in sys.argv or "-ls" in sys.argv:
+    if "-l" in sys.argv or "-ls" in sys.argv or "-lo" in sys.argv:
         if len(sys.argv) != 3 and "-l" in sys.argv:
             print("CORRECT USAGE: -l <load_from>")
         elif len(sys.argv) != 4 and "-ls" in sys.argv:
             print("CORRECT USAGE: -ls <load_from> <save_to")
+        elif len(sys.argv) != 4 and "-lo" in sys.argv:
+            print("CORRECT USAGE: -lo <load_from> <video_path>")
         else:
             print("Loading model...")
             file = open(sys.argv[2], "rb")
@@ -198,10 +200,10 @@ def main():
             dill.dump(model, file)
             file.close()
 
-    # Observe video if -o flag specified.
-    if "-o" in sys.argv:
-        if len(sys.argv) != 3:
-            print("CORRECT USAGE: -o <output_to>")
+    # Observe video if -lo flag specified. Must load a model too.
+    if "-lo" in sys.argv:
+        if len(sys.argv) != 4:
+            print("CORRECT USAGE: -lo <load_from> <video_path>")
         else:
             train(env, model, get_video=True)
 

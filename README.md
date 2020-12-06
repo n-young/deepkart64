@@ -34,7 +34,7 @@ The env wrapper was provided by the [gym-mupen64plus repo](https://github.com/bz
 
 ## Contributors
 
-- Floria Tsui
-- Kyle Reyes
-- Nick Young
-- Raj Paul
+-   Floria Tsui
+-   Kyle Reyes
+-   Nick Young
+-   Raj Paul
