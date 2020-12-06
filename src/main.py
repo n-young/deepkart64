@@ -163,6 +163,14 @@ def main():
 
     rewards = []
 
+    if "-S" in sys.argv:
+        if len(sys.argv) != 3:
+            print(
+                "CORRECT USAGE: -S <archive_folder> e.g. -S ./save_to (don't have a trailing /)."
+            )
+        else:
+            os.mkdir(sys.argv[2])
+
     for i in range(1000):
         reward = train(env, model)
         print("Train episode {}! Reward: {}\n".format(i, reward))
