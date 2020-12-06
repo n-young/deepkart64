@@ -63,7 +63,7 @@ def generate_trajectory(env, model, get_video=False):
 
     # Set up the break condition - for now, runs for 90 seconds.
     start_time = time.time()
-    while time.time() < start_time + 90:
+    while time.time() < start_time + 120:
         if done:
             break
         # 1) use model to generate probability distribution over next actions
@@ -163,11 +163,11 @@ def main():
 
     rewards = []
 
-    for i in range(300):
+    for i in range(1000):
         reward = train(env, model)
         print("Train episode {}! Reward: {}\n".format(i, reward))
         rewards.append(reward)
-        if i % 5 == 0 and "-S" in sys.argv:
+        if i % 10 == 0 and "-S" in sys.argv:
             if len(sys.argv) != 3:
                 print(
                     "CORRECT USAGE: -S <archive_folder> e.g. -S ./save_to (don't have a trailing /)."
@@ -176,6 +176,8 @@ def main():
                 file = open(sys.argv[3] + "/model-" + i // 10 + ".pkl", "wb")
                 dill.dump(model, file)
                 file.close()
+            avg_last_rewards = np.sum(rewards[-10:]) / 10
+            print("Average of last 10 rewards: {}\n".format(avg_last_rewards))
 
     avg_last_rewards = np.sum(rewards[-50:]) / 50
     print("Average of last 50 rewards: {}\n".format(avg_last_rewards))
