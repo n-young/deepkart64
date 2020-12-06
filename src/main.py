@@ -169,7 +169,10 @@ def main():
                 "CORRECT USAGE: -S <archive_folder> e.g. -S ./save_to (don't have a trailing /)."
             )
         else:
-            os.mkdir(sys.argv[2])
+            try:
+                os.mkdir(sys.argv[2])
+            except OSError as error:
+                print("Folder already exists - continuing execution.")
 
     for i in range(1000):
         reward = train(env, model)

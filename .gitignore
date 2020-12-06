@@ -1,5 +1,6 @@
 Makefile
 video.mp4
 .DS_Store
+*.pkl
 *.pyc
 *.egg-info/
