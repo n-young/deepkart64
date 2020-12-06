@@ -12,7 +12,10 @@ from discrete_envs import DiscreteActions
 from model import DK64Model
 from compress import compress
 
-# TODO: Make a lot of tweakable global variables up here
+# Global tweakable parameters.
+NUM_EPISODES = 1000
+EPISODE_LENGTH = 120
+SAVE_FREQUENCY = 10
 
 
 def discount(rewards, discount_factor=0.99):
@@ -24,22 +27,12 @@ def discount(rewards, discount_factor=0.99):
     :param discount_factor: Gamma discounting factor to use, defaults to .99
     :returns: discounted_rewards: list containing the discounted rewards for each timestep in the original rewards list
     """
-
-    num_rewards = len(rewards)
-    discounted_rewards = [None] * num_rewards
-
-    for i in range(num_rewards):
-        if i == 0:
-            # base case, set final timestep's discounted reward
-            discounted_rewards[num_rewards - 1] = rewards[num_rewards - 1]
-        else:
-            # use the discounted reward of the next entry to calculate current
-            disc_reward = (
-                rewards[num_rewards - 1 - i]
-                + discount_factor * discounted_rewards[num_rewards - i]
-            )
-            discounted_rewards[num_rewards - 1 - i] = disc_reward
-
+    # Calculate discounted rewards.
+    discounted_rewards = [rewards[-1]]
+    for i in range(2, len(rewards) + 1):
+        discounted_rewards.insert(
+            0, rewards[-i] + discount_factor * discounted_rewards[0]
+        )
     return discounted_rewards
 
 
@@ -50,45 +43,47 @@ def generate_trajectory(env, model, get_video=False):
     :param model: The model used to generate the actions
     :returns: A tuple of lists (states, actions, rewards), where each list has length equal to the number of timesteps in the episode
     """
+    # Initialize variables and states.
     states = []
     actions = []
     rewards = []
     state = env.reset()
-    state = compress(state)
     done = False
 
     # NOOP until green light
     for _ in range(88):
         env.step([0, 0, 0, 0, 0])
 
-    # Set up the break condition - for now, runs for 90 seconds.
+    # Set up the break condition - runs for maximum of EPISODE_LENGTH seconds.
     start_time = time.time()
-    while time.time() < start_time + 120:
+    while time.time() < start_time + EPISODE_LENGTH:
+        # Break out of loop if episode ended.
         if done:
             break
-        # 1) use model to generate probability distribution over next actions
-        # 2) sample from this distribution to pick the next action
 
-        # get cnn output; feed state into a CNN -> state vector
-        probabilities = tf.squeeze(
-            model.call(tf.expand_dims(tf.cast(state, tf.float32), axis=0))
-        )
+        # Get probabilities.
+        state = compress(state)
+        probabilities = model.call(tf.expand_dims(tf.cast(state, tf.float32), axis=0))
+        probabilities = tf.squeeze(probabilities)
         probabilities = np.reshape(probabilities.numpy(), [model.num_actions])
+
+        # Select action.
         possible_actions = np.arange(model.num_actions)
         action = np.random.choice(possible_actions, 1, p=probabilities)[0]
-
         discrete_actions = DiscreteActions()
         actual_action = discrete_actions.ACTION_MAP[action][1]
 
+        # Save state and apply action, take a step.
         states.append(state)
         actions.append(action)
         state, rwd, done, _ = env.step(actual_action)
-        state = compress(state)
         rewards.append(rwd)
 
+    # Output video if specified.
     if get_video:
         observe(tf.convert_to_tensor(states).numpy(), sys.argv[2])
 
+    # Return.
     return states, actions, rewards
 
 
@@ -103,17 +98,13 @@ def train(env, model, get_video=False):
     :param model: The model
     :returns: The total reward for the episode
     """
-
-    # 1) Use generate trajectory to run an episode and get states, actions, and rewards.
-    # 2) Compute discounted rewards.
-    # 3) Compute the loss from the model and run backpropagation on the model.
-
+    # Output a video if specified - doesn't do the rest of training.
     if get_video:
         generate_trajectory(env, model, get_video)
         return None
 
+    # Initialize total reward, run simulation, calculate losses.
     total_reward = 0
-
     with tf.GradientTape() as tape:
         states, actions, rewards = generate_trajectory(env, model, get_video)
         discounted_rewards = discount(rewards)
@@ -122,9 +113,9 @@ def train(env, model, get_video=False):
         )
         total_reward += np.sum(rewards)
 
+    # Apply gradients, return total_reward..
     gradients = tape.gradient(loss, model.trainable_variables)
     model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
-
     return total_reward
 
 
@@ -132,16 +123,14 @@ def main():
     """
     Main function.
     """
-
+    # Initialize environment and important values.
     env = gym.make("Mario-Kart-Luigi-Raceway-v0")
     state_size = env.observation_space.shape[0]
     discrete_actions = DiscreteActions()
     num_actions = discrete_actions.get_action_space().n
-
-    # Initialize model
     model = DK64Model(state_size, num_actions)
 
-    # Load weights if path specified
+    # Load weights if -l or -ls flag specified.
     print(sys.argv)
     if "-l" in sys.argv or "-ls" in sys.argv:
         if len(sys.argv) != 3 and "-l" in sys.argv:
@@ -157,12 +146,7 @@ def main():
             print(model.trainable_variables)
             print("Model variables printed!")
 
-    # 1) Train your model for 650 episodes, passing in the environment and the agent.
-    # 2) Append the total reward of the episode into a list keeping track of all of the rewards.
-    # 3) After training, print the average of the last 50 rewards you've collected.
-
-    rewards = []
-
+    # Creates folder to save models to if -S flag specified.
     if "-S" in sys.argv:
         if len(sys.argv) != 3:
             print(
@@ -174,26 +158,31 @@ def main():
             except OSError as error:
                 print("Folder already exists - continuing execution.")
 
-    for i in range(1000):
+    # Create rewards, train for NUM_EPISODES episodes.
+    rewards = []
+    for i in range(NUM_EPISODES):
+        # Train once.
         reward = train(env, model)
-        print("Train episode {}! Reward: {}\n".format(i, reward))
         rewards.append(reward)
-        if i % 10 == 0 and "-S" in sys.argv:
+        print("Train episode {}! Reward: {}\n".format(i, reward))
+
+        # On every SAVE_FREQUENCY run, save the model if -S flag specified.
+        if i % SAVE_FREQUENCY == 0 and "-S" in sys.argv:
             if len(sys.argv) != 3:
-                print(
-                    "CORRECT USAGE: -S <archive_folder> e.g. -S ./save_to (don't have a trailing /)."
-                )
+                print("CORRECT USAGE: -S <archive_folder>")
             else:
-                file = open(sys.argv[2] + "/model-" + str(i // 10) + ".pkl", "wb")
+                filename = sys.argv[2] + "/model-" + str(i // SAVE_FREQUENCY) + ".pkl"
+                file = open(filename, "wb")
                 dill.dump(model, file)
                 file.close()
-            avg_last_rewards = np.sum(rewards[-10:]) / 10
+            avg_last_rewards = np.sum(rewards[-SAVE_FREQUENCY:]) / SAVE_FREQUENCY
             print("Average of last 10 rewards: {}\n".format(avg_last_rewards))
 
+    # Print average of last 50 rewards.
     avg_last_rewards = np.sum(rewards[-50:]) / 50
     print("Average of last 50 rewards: {}\n".format(avg_last_rewards))
 
-    # Save model
+    # Save model if -s or -ls flag specified.
     if "-s" in sys.argv:
         if len(sys.argv) != 3:
             print("CORRECT USAGE: -s <save_to>")
@@ -209,16 +198,14 @@ def main():
             dill.dump(model, file)
             file.close()
 
-    # Observe video
+    # Observe video if -o flag specified.
     if "-o" in sys.argv:
         if len(sys.argv) != 3:
             print("CORRECT USAGE: -o <output_to>")
         else:
             train(env, model, get_video=True)
 
-    # Visualize your rewards.
-    # visualize_data(rewards) # commented out as this causes a segfault on my machine
 
-
+# Main.
 if __name__ == "__main__":
     main()

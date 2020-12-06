@@ -19,21 +19,15 @@ class DK64Model(tf.keras.Model):
         :param num_actions: number of actions in an environment
         """
         super(DK64Model, self).__init__()
+        self.state_size = state_size
         self.num_actions = num_actions
 
-        # Define actor network parameters, critic network parameters, and optimizer
+        # Define hyperparameters
         self.learning_rate = 0.01
         self.optimizer = tf.keras.optimizers.Adam(self.learning_rate)
         self.hidden_size = 200
 
-        self.actor_dense1 = tf.keras.layers.Dense(self.hidden_size, "relu")
-        self.actor_dense2 = tf.keras.layers.Dense(self.hidden_size, "relu")
-        self.actor_dense3 = tf.keras.layers.Dense(self.num_actions)
-
-        self.critic_dense1 = tf.keras.layers.Dense(self.hidden_size, "relu")
-        self.critic_dense2 = tf.keras.layers.Dense(1)
-
-        # CNN hyperparameters
+        # Convolutional layers.
         self.encoder_conv_1 = tf.keras.layers.Conv2D(
             filters=10,
             kernel_size=3,
@@ -41,6 +35,7 @@ class DK64Model(tf.keras.Model):
             padding="same",
             kernel_initializer=tf.keras.initializers.RandomNormal(stddev=0.1),
         )
+        self.leaky1 = tf.keras.layers.LeakyReLU(alpha=0.2)
         self.encoder_conv_2 = tf.keras.layers.Conv2D(
             filters=10,
             kernel_size=3,
@@ -48,6 +43,7 @@ class DK64Model(tf.keras.Model):
             padding="same",
             kernel_initializer=tf.keras.initializers.RandomNormal(stddev=0.1),
         )
+        self.leaky2 = tf.keras.layers.LeakyReLU(alpha=0.2)
         self.encoder_conv_3 = tf.keras.layers.Conv2D(
             filters=1,
             kernel_size=3,
@@ -55,9 +51,27 @@ class DK64Model(tf.keras.Model):
             padding="same",
             kernel_initializer=tf.keras.initializers.RandomNormal(stddev=0.1),
         )
-        self.leaky1 = tf.keras.layers.LeakyReLU(alpha=0.2)
-        self.leaky2 = tf.keras.layers.LeakyReLU(alpha=0.2)
         self.leaky3 = tf.keras.layers.LeakyReLU(alpha=0.2)
+
+        # Dense layers.
+        self.actor_dense1 = tf.keras.layers.Dense(self.hidden_size, "relu")
+        self.actor_dense2 = tf.keras.layers.Dense(self.hidden_size, "relu")
+        self.actor_dense3 = tf.keras.layers.Dense(self.num_actions)
+
+        self.critic_dense1 = tf.keras.layers.Dense(self.hidden_size, "relu")
+        self.critic_dense2 = tf.keras.layers.Dense(1)
+
+    def encoder(self, states):
+        """
+        CNN encoder - runs image input through three convolution layers with leaky ReLU activations.
+        """
+        output = self.encoder_conv_1(states)
+        output = self.leaky1(output)
+        output = self.encoder_conv_2(output)
+        output = self.leaky2(output)
+        output = self.encoder_conv_3(output)
+        output = self.leaky3(output)
+        return output
 
     def call(self, states):
         """
@@ -70,20 +84,17 @@ class DK64Model(tf.keras.Model):
         for each state in the episode
         """
 
-        # pass through CNN to obtain state vector from image
-        output = self.encoder_conv_1(states)
-        output = self.leaky1(output)
-        output = self.encoder_conv_2(output)
-        output = self.leaky2(output)
-        output = self.encoder_conv_3(output)
-        cnn_output = self.leaky3(output)
+        # Encode image into states.
+        cnn_output = self.encoder(states)
+
+        # Reshape CNN output and pass through dense layers.
         dense_input = tf.reshape(cnn_output, (tf.shape(states)[0], -1))
+        dense_output = self.actor_dense1(dense_input)
+        dense_output = self.actor_dense2(dense_output)
+        dense_output = self.actor_dense3(dense_output)
 
-        forward_pass = self.actor_dense3(
-            self.actor_dense2(self.actor_dense1(dense_input))
-        )
-        probabilities = tf.nn.softmax(forward_pass)
-
+        ## Return softmaxed probabilities.
+        probabilities = tf.nn.softmax(dense_output)
         return probabilities
 
     def value_function(self, states):
@@ -91,20 +102,19 @@ class DK64Model(tf.keras.Model):
         Value function.
         """
         # pass through CNN to obtain state vector from image
-        output = self.encoder_conv_1(states)
-        output = self.leaky1(output)
-        output = self.encoder_conv_2(output)
-        output = self.leaky2(output)
-        output = self.encoder_conv_3(output)
-        cnn_output = self.leaky3(output)
-        dense_input = tf.reshape(cnn_output, (tf.shape(states)[0], -1))
+        cnn_output = self.encoder(states)
 
-        return self.critic_dense2(self.critic_dense1(dense_input))
+        # Reshape CNN output and pass through dense layers.
+        dense_input = tf.reshape(cnn_output, (tf.shape(states)[0], -1))
+        dense_output = self.critic_dense1(dense_input)
+        dense_output = self.critic_dense2(dense_output)
+        return dense_output
 
     def loss(self, states, actions, discounted_rewards):
         """
         Loss function.
         """
+        # Get values, advantage, and probabilities.
         values = tf.squeeze(self.value_function(states))
         advantage = tf.math.subtract(discounted_rewards, values)
         probabilities = self.call(states)
@@ -112,9 +122,10 @@ class DK64Model(tf.keras.Model):
             probabilities,
             tf.stack([tf.range(tf.shape(actions)[0], dtype=tf.int32), actions], axis=1),
         )
+
+        # Get and return actor loss and critic loss.
         actor_loss = -1 * tf.reduce_sum(
             tf.math.log(probabilities_per_action) * tf.stop_gradient(advantage)
         )
         critic_loss = tf.reduce_sum((discounted_rewards - values) ** 2)
-
         return actor_loss + critic_loss
