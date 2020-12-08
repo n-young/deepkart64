@@ -23,7 +23,7 @@ def observe(data, filename):
     # Converting pngs to mp4.
     print("Writing video...")
     ffmpeg.input("./pngs/%d.png", framerate=20).output(filename).run()
-    print("Video written to ./src/video.mp4!")
+    print("Video written to ./src/" + filename)
 
     # Removing excess pngs.
     for i in range(data.shape[0]):

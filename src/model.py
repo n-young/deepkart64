@@ -23,41 +23,68 @@ class DK64Model(tf.keras.Model):
         self.num_actions = num_actions
 
         # Define actor network parameters, critic network parameters, and optimizer
-        self.learning_rate = 0.001
+        self.learning_rate = 1e-3
         self.optimizer = tf.keras.optimizers.Adam(self.learning_rate)
         self.hidden_size = 200
 
-        # Convolutional layers.
-        self.encoder_conv_1 = tf.keras.layers.Conv2D(
-            filters=10,
+        # Actor convolutional layers.
+        self.actor_conv_1 = tf.keras.layers.Conv2D(
+            filters=64,
             kernel_size=3,
             strides=(2, 2),
             padding="same",
             kernel_initializer=tf.keras.initializers.RandomNormal(stddev=0.1),
         )
-        self.leaky1 = tf.keras.layers.LeakyReLU(alpha=0.2)
-        self.encoder_conv_2 = tf.keras.layers.Conv2D(
-            filters=10,
+        self.actor_leaky1 = tf.keras.layers.LeakyReLU(alpha=0.2)
+        self.actor_conv_2 = tf.keras.layers.Conv2D(
+            filters=64,
             kernel_size=3,
             strides=(2, 2),
             padding="same",
             kernel_initializer=tf.keras.initializers.RandomNormal(stddev=0.1),
         )
-        self.leaky2 = tf.keras.layers.LeakyReLU(alpha=0.2)
-        self.encoder_conv_3 = tf.keras.layers.Conv2D(
+        self.actor_leaky2 = tf.keras.layers.LeakyReLU(alpha=0.2)
+        self.actor_conv_3 = tf.keras.layers.Conv2D(
             filters=1,
             kernel_size=3,
             strides=(2, 2),
             padding="same",
             kernel_initializer=tf.keras.initializers.RandomNormal(stddev=0.1),
         )
-        self.leaky3 = tf.keras.layers.LeakyReLU(alpha=0.2)
+        self.actor_leaky3 = tf.keras.layers.LeakyReLU(alpha=0.2)
 
-        # Dense layers.
+        # Actor dense layers.
         self.actor_dense1 = tf.keras.layers.Dense(self.hidden_size, "relu")
         self.actor_dense2 = tf.keras.layers.Dense(self.hidden_size, "relu")
         self.actor_dense3 = tf.keras.layers.Dense(self.num_actions)
 
+        # Critic convolutional layers.
+        self.critic_conv_1 = tf.keras.layers.Conv2D(
+            filters=64,
+            kernel_size=3,
+            strides=(2, 2),
+            padding="same",
+            kernel_initializer=tf.keras.initializers.RandomNormal(stddev=0.1),
+        )
+        self.critic_leaky1 = tf.keras.layers.LeakyReLU(alpha=0.2)
+        self.critic_conv_2 = tf.keras.layers.Conv2D(
+            filters=64,
+            kernel_size=3,
+            strides=(2, 2),
+            padding="same",
+            kernel_initializer=tf.keras.initializers.RandomNormal(stddev=0.1),
+        )
+        self.critic_leaky2 = tf.keras.layers.LeakyReLU(alpha=0.2)
+        self.critic_conv_3 = tf.keras.layers.Conv2D(
+            filters=1,
+            kernel_size=3,
+            strides=(2, 2),
+            padding="same",
+            kernel_initializer=tf.keras.initializers.RandomNormal(stddev=0.1),
+        )
+        self.critic_leaky3 = tf.keras.layers.LeakyReLU(alpha=0.2)
+
+        # Critic dense layers.
         self.critic_dense1 = tf.keras.layers.Dense(self.hidden_size, "relu")
         self.critic_dense2 = tf.keras.layers.Dense(1)
 
@@ -85,7 +112,12 @@ class DK64Model(tf.keras.Model):
         """
 
         # Encode image into states.
-        cnn_output = self.encoder(states)
+        cnn_output = self.actor_conv_1(states)
+        cnn_output = self.actor_leaky1(cnn_output)
+        cnn_output = self.actor_conv_2(cnn_output)
+        cnn_output = self.actor_leaky2(cnn_output)
+        cnn_output = self.actor_conv_3(cnn_output)
+        cnn_output = self.actor_leaky3(cnn_output)
 
         # Reshape CNN output and pass through dense layers.
         dense_input = tf.reshape(cnn_output, (tf.shape(states)[0], -1))
@@ -101,8 +133,13 @@ class DK64Model(tf.keras.Model):
         """
         Value function.
         """
-        # pass through CNN to obtain state vector from image
-        cnn_output = self.encoder(states)
+        # Encode image into states.
+        cnn_output = self.critic_conv_1(states)
+        cnn_output = self.critic_leaky1(cnn_output)
+        cnn_output = self.critic_conv_2(cnn_output)
+        cnn_output = self.critic_leaky2(cnn_output)
+        cnn_output = self.critic_conv_3(cnn_output)
+        cnn_output = self.critic_leaky3(cnn_output)
 
         # Reshape CNN output and pass through dense layers.
         dense_input = tf.reshape(cnn_output, (tf.shape(states)[0], -1))

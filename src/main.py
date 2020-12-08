@@ -13,10 +13,11 @@ from model import DK64Model
 from compress import compress
 
 # Global tweakable parameters.
-NUM_EPISODES = 1000
-EPISODE_LENGTH = 120
-SAVE_FREQUENCY = 10
-
+# TODO: Make these dynamic parameters
+NUM_EPISODES = 1
+BATCH_SZ = 5
+EPISODE_LENGTH = 20
+SAVE_FREQUENCY = BATCH_SZ * 5
 
 def discount(rewards, discount_factor=0.99):
     """
@@ -45,6 +46,7 @@ def generate_trajectory(env, model, get_video=False):
     """
     # Initialize variables and states.
     states = []
+    frames = []
     actions = []
     rewards = []
     state = env.reset()
@@ -62,7 +64,7 @@ def generate_trajectory(env, model, get_video=False):
             break
 
         # Get probabilities.
-        state = compress(state)
+        state, original = compress(state)
         probabilities = model.call(tf.expand_dims(tf.cast(state, tf.float32), axis=0))
         probabilities = tf.squeeze(probabilities)
         probabilities = np.reshape(probabilities.numpy(), [model.num_actions])
@@ -75,13 +77,18 @@ def generate_trajectory(env, model, get_video=False):
 
         # Save state and apply action, take a step.
         states.append(state)
+        if get_video:
+            frames.append(original)
         actions.append(action)
         state, rwd, done, _ = env.step(actual_action)
         rewards.append(rwd)
 
     # Output video if specified.
     if get_video:
-        observe(tf.convert_to_tensor(states).numpy(), sys.argv[3])
+        if "-lo" in sys.argv:
+            observe(np.array(frames), sys.argv[3])
+        if "-o" in sys.argv:
+            observe(np.array(frames), sys.argv[2])
 
     # Return.
     return states, actions, rewards
@@ -98,25 +105,29 @@ def train(env, model, get_video=False):
     :param model: The model
     :returns: The total reward for the episode
     """
-    # Output a video if specified - doesn't do the rest of training.
+    # Generate video.
     if get_video:
         generate_trajectory(env, model, get_video)
         return None
 
     # Initialize total reward, run simulation, calculate losses.
+    losses = []
     total_reward = 0
     with tf.GradientTape() as tape:
-        states, actions, rewards = generate_trajectory(env, model, get_video)
-        discounted_rewards = discount(rewards)
-        loss = model.loss(
-            tf.convert_to_tensor(states).numpy(), actions, discounted_rewards
-        )
-        total_reward += np.sum(rewards)
+        for _ in range(BATCH_SZ):
+            states, actions, rewards = generate_trajectory(env, model)
+            discounted_rewards = discount(rewards)
+            loss = model.loss(
+                tf.convert_to_tensor(states).numpy(), actions, discounted_rewards
+            )
+            losses.append(loss)
+            total_reward += np.sum(rewards)
+        total_loss = tf.reduce_mean(losses)
 
     # Apply gradients, return total_reward..
-    gradients = tape.gradient(loss, model.trainable_variables)
+    gradients = tape.gradient(total_loss, model.trainable_variables)
     model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
-    return total_reward
+    return total_reward / BATCH_SZ
 
 
 def main():
@@ -124,13 +135,14 @@ def main():
     Main function.
     """
     # Initialize environment and important values.
+    # TODO: Randomize the map?
     env = gym.make("Mario-Kart-Luigi-Raceway-v0")
     state_size = env.observation_space.shape[0]
     discrete_actions = DiscreteActions()
     num_actions = discrete_actions.get_action_space().n
     model = DK64Model(state_size, num_actions)
 
-    # Load weights if -l or -ls flag specified.
+    # Load weights if -l or -ls or -lo flag specified.
     print(sys.argv)
     if "-l" in sys.argv or "-ls" in sys.argv or "-lo" in sys.argv:
         if len(sys.argv) != 3 and "-l" in sys.argv:
@@ -147,6 +159,11 @@ def main():
             print("Confirming model loaded correctly...")
             print(model.trainable_variables)
             print("Model variables printed!")
+            # If -lo, load and then output and return - no more training.
+            if "-lo" in sys.argv:
+                train(env, model, get_video=True)
+                return None
+
 
     # Creates folder to save models to if -S flag specified.
     if "-S" in sys.argv:
@@ -200,10 +217,10 @@ def main():
             dill.dump(model, file)
             file.close()
 
-    # Observe video if -lo flag specified. Must load a model too.
-    if "-lo" in sys.argv:
-        if len(sys.argv) != 4:
-            print("CORRECT USAGE: -lo <load_from> <video_path>")
+    # Observe video if -o flag specified. Must load a model too.
+    if "-o" in sys.argv:
+        if len(sys.argv) != 3:
+            print("CORRECT USAGE: -o <video_path>")
         else:
             train(env, model, get_video=True)
 
