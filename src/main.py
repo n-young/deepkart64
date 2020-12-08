@@ -14,10 +14,10 @@ from compress import compress
 
 # Global tweakable parameters.
 # TODO: Make these dynamic parameters
-NUM_EPISODES = 1
-BATCH_SZ = 5
-EPISODE_LENGTH = 20
-SAVE_FREQUENCY = BATCH_SZ * 5
+NUM_EPISODES = 1000
+BATCH_SZ = 1
+EPISODE_LENGTH = 200
+SAVE_FREQUENCY = BATCH_SZ * 20
 
 def discount(rewards, discount_factor=0.99):
     """
@@ -135,7 +135,6 @@ def main():
     Main function.
     """
     # Initialize environment and important values.
-    # TODO: Randomize the map?
     env = gym.make("Mario-Kart-Luigi-Raceway-v0")
     state_size = env.observation_space.shape[0]
     discrete_actions = DiscreteActions()

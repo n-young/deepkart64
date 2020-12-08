@@ -23,7 +23,7 @@ class DK64Model(tf.keras.Model):
         self.num_actions = num_actions
 
         # Define actor network parameters, critic network parameters, and optimizer
-        self.learning_rate = 1e-3
+        self.learning_rate = 5e-4
         self.optimizer = tf.keras.optimizers.Adam(self.learning_rate)
         self.hidden_size = 200
 
