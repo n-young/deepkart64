@@ -23,8 +23,9 @@ class DK64Model(tf.keras.Model):
         self.num_actions = num_actions
 
         # Define actor network parameters, critic network parameters, and optimizer
-        self.learning_rate = 5e-4
-        self.optimizer = tf.keras.optimizers.Adam(self.learning_rate)
+        self.learning_rate = 1e-4
+        self.epsilon = 1e-5
+        self.optimizer = tf.keras.optimizers.Adam(learning_rate=self.learning_rate, epsilon=self.epsilon)
         self.hidden_size = 200
 
         # Actor convolutional layers.
@@ -87,18 +88,6 @@ class DK64Model(tf.keras.Model):
         # Critic dense layers.
         self.critic_dense1 = tf.keras.layers.Dense(self.hidden_size, "relu")
         self.critic_dense2 = tf.keras.layers.Dense(1)
-
-    def encoder(self, states):
-        """
-        CNN encoder - runs image input through three convolution layers with leaky ReLU activations.
-        """
-        output = self.encoder_conv_1(states)
-        output = self.leaky1(output)
-        output = self.encoder_conv_2(output)
-        output = self.leaky2(output)
-        output = self.encoder_conv_3(output)
-        output = self.leaky3(output)
-        return output
 
     def call(self, states):
         """

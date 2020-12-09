@@ -1,10 +1,10 @@
 import tensorflow as tf
 
 
-def compress(image):
+def compress(image, n):
     """
-    Compresses the given image by a factor of 4.
+    Compresses the given image by a factor of n.
     """
     return tf.nn.avg_pool(
-        tf.cast(image, dtype=tf.float32), ksize=10, strides=10, padding="SAME"
+        tf.cast(image, dtype=tf.float32), ksize=n, strides=n, padding="SAME"
     ), image
