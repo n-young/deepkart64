@@ -59,8 +59,8 @@ def generate_trajectory(env, model, get_video=False):
     state = env.reset()
     done = False
 
-    global MIN_REWARD_THRESHOLD
-    global EPISODE_LENGTH
+    #global MIN_REWARD_THRESHOLD
+    #global EPISODE_LENGTH
 
     # NOOP until green light
     for _ in range(88):
@@ -71,23 +71,25 @@ def generate_trajectory(env, model, get_video=False):
         env.step([0, 0, 1, 0, 0])
 
     # reinitialize EPISODE_LENGTH
-    EPISODE_LENGTH = 50
+    # EPISODE_LENGTH = 50
 
     # Set up the break condition - runs for maximum of EPISODE_LENGTH seconds.
     start_time = time.time()
     num_threshold_breaks = 0
-    while time.time() < start_time + min(EPISODE_LENGTH, MAX_EPISODE_LENGTH):
+    #while time.time() < start_time + min(EPISODE_LENGTH, MAX_EPISODE_LENGTH):
+    while time.time() < start_time + EPISODE_LENGTH:
         # Break out of loop if episode ended.
         if done:
             break
 
         if current_episode_reward < MIN_REWARD_THRESHOLD:
-            num_threshold_breaks += 1
+            # num_threshold_breaks += 1
 
-            # make sure we don't reach this condition too many times
-            if num_threshold_breaks == 5:
-                MIN_REWARD_THRESHOLD = -50
-                num_threshold_breaks = 0
+            # # make sure we don't reach this condition too many times
+            # if num_threshold_breaks == 5:
+            #     MIN_REWARD_THRESHOLD = -50
+            #     num_threshold_breaks = 0
+
             break
 
         # Get probabilities.
@@ -112,10 +114,10 @@ def generate_trajectory(env, model, get_video=False):
         
 
         # edit EPISODE_LENGTH (as a function of how well we're doing, aka current_episode_reward)
-        if current_episode_reward <= current_episode_reward + rwd:
-            EPISODE_LENGTH += ARBITRARY_NUM #TODO: figure out what this delta should be
-        else:
-            EPISODE_LENGTH -= ARBITRARY_NUM
+        # if current_episode_reward <= current_episode_reward + rwd:
+        #     EPISODE_LENGTH += ARBITRARY_NUM #TODO: figure out what this delta should be
+        # else:
+        #     EPISODE_LENGTH -= ARBITRARY_NUM
 
         current_episode_reward += rwd
         
@@ -177,7 +179,7 @@ def main():
     discrete_actions = DiscreteActions()
     num_actions = discrete_actions.get_action_space().n
     model = DK64Model(state_size, num_actions)
-    global MIN_REWARD_THRESHOLD
+    #global MIN_REWARD_THRESHOLD
 
     # Load weights if -l or -ls or -lo flag specified.
     print(sys.argv)
@@ -245,12 +247,12 @@ def main():
         avg_last_rewards = np.sum(rewards[-10:]) / 10
         print("Average of last 10 rewards: {}\n".format(avg_last_rewards))
 
-        if prev_avg_last_rewards != None:
-            if avg_last_rewards >= prev_avg_last_rewards:
-                # increase MIN_REWARD_THRESHOLD
-                MIN_REWARD_THRESHOLD += ARBITRARY_NUM
-        else:
-            prev_avg_last_rewards = avg_last_rewards
+        # if prev_avg_last_rewards != None:
+        #     if avg_last_rewards >= prev_avg_last_rewards:
+        #         # increase MIN_REWARD_THRESHOLD
+        #         MIN_REWARD_THRESHOLD += ARBITRARY_NUM
+        # else:
+        #     prev_avg_last_rewards = avg_last_rewards
 
         
 
