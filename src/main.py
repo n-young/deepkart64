@@ -13,11 +13,17 @@ from model import DK64Model
 from compress import compress
 
 # Global tweakable parameters.
-# TODO: Make these dynamic parameters
 NUM_EPISODES = 1000
 BATCH_SZ = 1
-EPISODE_LENGTH = 200
 SAVE_FREQUENCY = BATCH_SZ * 20
+MAX_EPISODE_LENGTH = 300
+
+ARBITRARY_NUM = 3
+
+# TODO: make these dynamic
+EPISODE_LENGTH = 50
+MIN_REWARD_THRESHOLD = -100
+
 
 def discount(rewards, discount_factor=0.99):
     """
@@ -49,18 +55,39 @@ def generate_trajectory(env, model, get_video=False):
     frames = []
     actions = []
     rewards = []
+    current_episode_reward = 0
     state = env.reset()
     done = False
+
+    global MIN_REWARD_THRESHOLD
+    global EPISODE_LENGTH
 
     # NOOP until green light
     for _ in range(88):
         env.step([0, 0, 0, 0, 0])
 
+    # Give it a little forward momentum
+    for _ in range(10):
+        env.step([0, 0, 1, 0, 0])
+
+    # reinitialize EPISODE_LENGTH
+    EPISODE_LENGTH = 50
+
     # Set up the break condition - runs for maximum of EPISODE_LENGTH seconds.
     start_time = time.time()
-    while time.time() < start_time + EPISODE_LENGTH:
+    num_threshold_breaks = 0
+    while time.time() < start_time + min(EPISODE_LENGTH, MAX_EPISODE_LENGTH):
         # Break out of loop if episode ended.
         if done:
+            break
+
+        if current_episode_reward < MIN_REWARD_THRESHOLD:
+            num_threshold_breaks += 1
+
+            # make sure we don't reach this condition too many times
+            if num_threshold_breaks == 5:
+                MIN_REWARD_THRESHOLD = -50
+                num_threshold_breaks = 0
             break
 
         # Get probabilities.
@@ -82,6 +109,16 @@ def generate_trajectory(env, model, get_video=False):
         actions.append(action)
         state, rwd, done, _ = env.step(actual_action)
         rewards.append(rwd)
+        
+
+        # edit EPISODE_LENGTH (as a function of how well we're doing, aka current_episode_reward)
+        if current_episode_reward <= current_episode_reward + rwd:
+            EPISODE_LENGTH += ARBITRARY_NUM #TODO: figure out what this delta should be
+        else:
+            EPISODE_LENGTH -= ARBITRARY_NUM
+
+        current_episode_reward += rwd
+        
 
     # Output video if specified.
     if get_video:
@@ -140,6 +177,7 @@ def main():
     discrete_actions = DiscreteActions()
     num_actions = discrete_actions.get_action_space().n
     model = DK64Model(state_size, num_actions)
+    global MIN_REWARD_THRESHOLD
 
     # Load weights if -l or -ls or -lo flag specified.
     print(sys.argv)
@@ -178,6 +216,8 @@ def main():
 
     # Create rewards, train for NUM_EPISODES episodes.
     rewards = []
+    prev_avg_last_rewards = None
+
     for i in range(NUM_EPISODES):
         # Train once.
         reward = train(env, model)
@@ -193,12 +233,26 @@ def main():
                 file = open(filename, "wb")
                 dill.dump(model, file)
                 file.close()
-            avg_last_rewards = np.sum(rewards[-SAVE_FREQUENCY:]) / SAVE_FREQUENCY
-            print("Average of last 10 rewards: {}\n".format(avg_last_rewards))
 
-    # Print average of last 50 rewards.
-    avg_last_rewards = np.sum(rewards[-50:]) / 50
-    print("Average of last 50 rewards: {}\n".format(avg_last_rewards))
+            
+            avg_last_rewards = np.sum(rewards[-SAVE_FREQUENCY:]) / SAVE_FREQUENCY
+            print("Average of last {} rewards: {}\n".format(SAVE_FREQUENCY, avg_last_rewards))
+
+
+
+    # Print average of last 10 rewards.
+    if i % 10 == 0 and i >= 10:
+        avg_last_rewards = np.sum(rewards[-10:]) / 10
+        print("Average of last 10 rewards: {}\n".format(avg_last_rewards))
+
+        if prev_avg_last_rewards != None:
+            if avg_last_rewards >= prev_avg_last_rewards:
+                # increase MIN_REWARD_THRESHOLD
+                MIN_REWARD_THRESHOLD += ARBITRARY_NUM
+        else:
+            prev_avg_last_rewards = avg_last_rewards
+
+        
 
     # Save model if -s or -ls flag specified.
     if "-s" in sys.argv:
