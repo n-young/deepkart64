@@ -1,7 +1,17 @@
+import tensorflow as tf
 import numpy as np
 import png
 import ffmpeg
 import os
+
+
+def compress(image, n):
+    """
+    Compresses the given image by a factor of n.
+    """
+    return tf.nn.avg_pool(
+        tf.cast(image, dtype=tf.float32), ksize=n, strides=n, padding="SAME"
+    ), image
 
 
 def observe(data, filename):
