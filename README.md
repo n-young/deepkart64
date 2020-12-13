@@ -67,6 +67,6 @@ The env wrapper was provided by the [gym-mupen64plus repo](https://github.com/bz
 ## Contributors
 
 -   [Floria Tsui](https://github.com/floriatsui)
--   [Kyle Reyes](https://github.com/kwilliamnrys)
+-   [Kyle Reyes](https://github.com/kylewreyes)
 -   [Nick Young](https://github.com/n-young)
 -   [Raj Paul](https://github.com/rpaul48)
